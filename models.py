@@ -91,10 +91,15 @@ class BlockChain(object):
 	def addBlock(self, block):
 		assert isinstance(block, Block)
 		nonce = block.raw["nonce"]
-		flag = False
+		flag = True
 
 		# test the nonce
-		flag = block.nonceTest(nonce)
+		flag = flag and block.nonceTest(nonce)
+
+		# test that the difficulty is more than or equal
+		# to the last difficulty level
+		tip_block = self.tip()
+		flag = flag and tip_block.raw["difficulty"] <= block.raw["difficulty"]
 
 		if flag:
 			self._blocks.append(block.json())
