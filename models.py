@@ -20,7 +20,7 @@ class Block(object):
 			loaded["difficulty"],
 			loaded["txns"],
 			loaded["nonce"],
-			loaded["time"])
+			loaded["at"])
 
 	def __init__(self, prev, difficulty, txns, nonce=None, time=None):
 		assert isinstance(txns, list)
@@ -75,7 +75,15 @@ class BlockChain(object):
 		for block in blocks:
 			assert isinstance(block, Block)
 
-		self._blocks = blocks
+		self._blocks = map(lambda l: l.json(), blocks)
+
+	"""
+		#####################################
+		Populate this function asap
+		#####################################
+	"""
+	def validateBlockContents(self, contents):
+		return True
 
 	def addBlock(self, block):
 		assert isinstance(block, Block)
@@ -114,4 +122,7 @@ class BlockChain(object):
 		return self.getBlock(0)
 
 if __name__ == "__main__":
-	print Block("d0eedb799584d850fdd802fd3c27ae34", 1, []).json()
+	genesis = Block("d0eedb799584d850fdd802fd3c27ae34", 1, [])
+	blockChain = BlockChain([genesis])
+
+	blockChain.getBlocks(True)
