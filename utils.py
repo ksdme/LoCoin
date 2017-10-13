@@ -12,7 +12,11 @@ def isValidHash(hashID):
         validates a given hashID and returns a boolean
     """
     
-    return match(r"^([a-z\d]{32})$", str(hashID)) is not None
+    return match(r"^([a-z\d]{40})$", str(hashID)) is not None
 
-def toBinary(string):
-	return "".join(format(ord(x), 'b') for x in st)
+def paddedString(of, wyth, length):
+	padded = str(format(ord(of), 'b'))
+	return (wyth*(8-len(padded)) + padded)
+
+def toBinary(string): 
+	return "".join(paddedString(x, "0", 8) for x in string)
