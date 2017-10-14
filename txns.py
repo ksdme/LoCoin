@@ -25,7 +25,7 @@ class TxnPool(object):
 	def select(self):
 		for _ in xrange(10):
 			try:
-				yield self.pool.pop(_)
+				yield self.pool.pop()
 			except IndexError:
 				break
 	
