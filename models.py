@@ -39,6 +39,11 @@ class Block(object):
 			assert isinstance(time, int)
 			self._time = int(time)
 
+		try:
+			self._txns = map(lambda l: l.json(), self._txns)
+		except AttributeError:
+			self._txns = map(loads, self._txns)
+
 		self._block = {
 			"at": self._time,
 			"prev": self._prev,
@@ -136,21 +141,19 @@ class BlockChain(object):
 	def lastHash(self):
 		return self.tip().raw["hash"]
 
+	def lastDifficulty(self):
+		return self.tip().raw["difficulty"]
+
 if __name__ == "__main__":
-	genesis = Block("da4b9237bacccdf19c0760cab7aec4a8359010b0", 1, [])
-	blockChain = BlockChain([genesis])
+	from txns import *
+	from miner import *
 	
-	firstBlock = Block(blockChain.lastHash(), 4, [])
-	#blockChain.addBlock(firstBlock)
+	genesis = Block("da4b9237bacccdf19c0760cab7aec4a8359010b0", 1, [])
+	blockChain, txnPool = BlockChain([genesis]), TxnPool() 
 
-	for l in xrange(10000, 1000000):
-		if firstBlock.nonceTest(l):
-			print "[+] Solved!"
-			firstBlock.setNonce(l)
-			break
-	else:
-		print "[+] Not Solved"
-		exit()
+	loTxn = LoTxn("28.535517,77.391029", 1, "0f15eacb36d9d1a7786eb59d090816cef38a181b7d19baf4c49383d2f46b1b13")
+	Miner.fixLoTxn(loTxn)
 
-	blockChain.addBlock(firstBlock)
+	txnPool.addToPool(loTxn)
+	Miner.do(blockChain, txnPool)
 	blockChain.getBlocks(True)

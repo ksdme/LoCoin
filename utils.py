@@ -5,6 +5,7 @@
 """
 from re import match
 from hashlib import md5
+from codecs import encode
 
 def isValidHash(hashID):
     """
@@ -20,3 +21,6 @@ def paddedString(of, wyth, length):
 
 def toBinary(string): 
 	return "".join(paddedString(x, "0", 8) for x in string)
+
+def toReadable(hexString):
+	return encode(hexString, "hex").decode("utf-8")

@@ -4,21 +4,69 @@
 	given app kind of stuff!
 """
 
-# the siginging mechanism 
-from codecs import encode
+# the siginging mechanism
+from rsa import *
+from utils import *
 from binascii import unhexlify
-from ecdsa import SigningKey, VerifyingKey, SECP256k1
+
+# required constant, helps during translation
+# of the public key from a number to string
+_MAP_GEN_TUPLE = ([(str(l), chr(l+97)) for l in xrange(0, 26)] +
+                  [(str(l), chr(l+39)) for l in xrange(26, 52)] +
+                  [(str(l), chr(l-4))  for l in xrange(52, 62)])
+
+# useful when translating from pub key to alpha
+_KEY_TRANSLATE_MAP_FORWARD = dict(_MAP_GEN_TUPLE)
+
+# used when translating from alpha to pub key
+_KEY_TRANSLATE_MAP_BACKWARD = dict(map(
+    lambda elm: (elm[1], elm[0]), _MAP_GEN_TUPLE))
+
+def transform_pub_key_to_alpha(key):
+    """
+        transforms a given pub key into
+        an alphanumeric key used for txn
+    """
+    key, transformed = str(key), ""
+    current, key_len = 0, len(key)
+
+    while current < key_len:
+        partial = key[current]
+        try:
+            transformed += _KEY_TRANSLATE_MAP_FORWARD[partial+key[current+1]]
+            current += 2
+        except (KeyError, IndexError):
+            transformed += _KEY_TRANSLATE_MAP_FORWARD[partial]
+            current += 1
+
+    return transformed
+
+def transform_alpha_to_pub_key(key):
+    """
+        transforms a given alpha numeric
+        key into its pub key form
+    """
+    transformed, key = "", str(key)
+    for elm in key:
+        transformed += _KEY_TRANSLATE_MAP_BACKWARD[elm]
+
+    return transformed
 
 class Wallet(object):
 
 	@staticmethod
 	def new():
-		publicKey = SigningKey.generate(curve=SECP256k1)
-		privateKey = publicKey.get_verifying_key()
+		keys = newkeys(4096, poolsize=2)
 
-		publicKey = encode(publicKey.to_string(), "hex").decode("utf-8")
-		privateKey = encode(privateKey.to_string(), "hex").decode("utf-8")
-		return str(publicKey), str(privateKey)
+	@staticmethod
+    def getPublicKey(wallet):
+        """
+            takes a wallet and generates your
+            public alphanumeric key
+        """
+
+        pub_key = str(wallet[0].n)
+        return transform_pub_key_to_alpha(pub_key)
 
 	@staticmethod
 	def loadPublic(publicKey):

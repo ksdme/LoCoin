@@ -8,3 +8,5 @@
 	the given block has been rejected!
 """
 class BlockRejected(Exception): pass
+class BlockRejecetedToPool(Exception): pass
+class BlockRejectedEntryToChain(Exception): pass
