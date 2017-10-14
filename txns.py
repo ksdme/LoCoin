@@ -9,7 +9,7 @@ from hashlib import sha1
 from app_exceptions import *
 from json import dumps, loads
 from time import time as tyme
-from binascii import hexlify
+from binascii import hexlify, unhexlify
 
 # Simply to keep txns
 class Txn(object): pass
@@ -105,15 +105,41 @@ class LoTxn(Txn):
 
 class MoTxn(Txn):
 
-	def __init__(self, blockChain, frm, to, amount):
+	def __init__(self, blockChain, wallet, to, amount):
 		"""
 			for reasons, calculate the balances
 			beforehand and then validate the amount
 		"""
 
 		self._amount = float(amount)
-		self._frm = frm
+		self._frm = Wallet.getPublicKey(wallet)
+		self._wallet = wallet
 		self._to = to
 
-	def sign(self, priv):
-		pass
+		self._signed = False
+
+		self._txn = {
+			"type": "mo",
+			"from": self._frm
+		}
+
+	def sign(self):
+		payload = {
+			"to": self._to,
+			"amount": self._amount
+		}
+
+		payload_signed = rsa.encrypt(dumps(payload), self._wallet[1])
+		self._txn["payload"] = toReadable(payload_signed)
+		self._signed = True
+
+	def json(self):
+		if self._signed:
+			return dumps(self._txn)
+		else:
+			raise SyntaxError("Requires Signing")
+
+	def valid(self):
+		return True
+
+	raw = property(lambda self: self._txn)

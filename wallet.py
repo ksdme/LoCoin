@@ -32,6 +32,10 @@ class Wallet(object):
 		return transform_pub_key_to_alpha(pub_key)
 
 	@staticmethod
+	def reconstructPublicKey(key):
+		return PublicKey(transform_alpha_to_pub_key(key), 65537)
+
+	@staticmethod
 	def loadWallet(uri):
 		"""
 			loads a wallet from a public key file

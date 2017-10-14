@@ -4,6 +4,7 @@
 	doesn't support forks or multiple simul
 	taneous transactions
 """
+import rsa
 from utils import *
 from hashlib import sha1
 from app_exceptions import *
@@ -144,6 +145,38 @@ class BlockChain(object):
 	def lastDifficulty(self):
 		return self.tip().raw["difficulty"]
 
+	def calculateBalance(self, of):
+		balance = 0.0
+		for block in self.getBlocks(False):
+			for txn in block.raw["txns"]:
+				txn = loads(txn)
+
+				if txn["type"] != "mo":
+					continue
+
+				if txn["from"] != of:
+					frm = txn["from"]
+					pubKey = Wallet.reconstructPublicKey(frm)
+
+					decrypted = rsa.decrypt(txn["payload"], pubKey)
+					decrypted = loads(decrypted)
+
+					# Ensure the key matches!
+					if of == decrypted["to"]:
+						balance += float(decrypted["amount"])
+				else:
+					pubKey = Wallet.reconstructPublicKey(of)
+					decrypted = rsa.decrypt(txn["payload"], pubKey)
+					decrypted = loads(decrypted)
+
+					balance -= float(decrypted["amount"])
+
+		return balance
+
+	def getPosition(self, of):
+
+		pass
+
 if __name__ == "__main__":
 	from txns import *
 	from miner import *
@@ -163,6 +196,10 @@ if __name__ == "__main__":
 	Miner.fixLoTxn(loTxn)
 
 	txnPool.addToPool(loTxn)
+
+	moTxn = MoTxn(blockChain, wallet, "kW3giRjTgjihYqLqajKxBFajaBRagNngi4iQKpiOrg0G3jvAyCihhVj5KE9aahhVJOMAlZiUxaaRB1HyjaBgV1EvJtsDhsjvjiaiojaAwgSjoPtjN2l7a3yYaiqg45iDphQjaoC6NMiqahjhxiBjaihmQ2yQpThGghnhnhagAhOkjMjPDaX8OaaCaiiQhMUhlJgj", 5)
+	moTxn.sign()
+	txnPool.addToPool(moTxn)
 
 	Miner.do(blockChain, txnPool)
 	blockChain.getBlocks(True)

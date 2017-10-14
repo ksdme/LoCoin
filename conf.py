@@ -10,7 +10,7 @@ class WalletConf(enum):
     """
 
     # bits, 40 Bytes
-    KEY_PAIR_SIZE = 1024
+    KEY_PAIR_SIZE = 2048
 
     # file names
     WALLET_FILE_EXTENSION = ".wallet"
