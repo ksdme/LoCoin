@@ -110,11 +110,13 @@ class MoTxn(Txn):
 			for reasons, calculate the balances
 			beforehand and then validate the amount
 		"""
+		assert amount > 0
 
 		self._amount = float(amount)
 		self._frm = Wallet.getPublicKey(wallet)
 		self._wallet = wallet
 		self._to = to
+		self._blockchain = blockChain
 
 		self._signed = False
 
@@ -129,8 +131,8 @@ class MoTxn(Txn):
 			"amount": self._amount
 		}
 
-		payload_signed = rsa.encrypt(dumps(payload), self._wallet[1])
-		self._txn["payload"] = toReadable(payload_signed)
+		payload_signed = rsa.encrypt(dumps(payload).encode('utf-8'), self._wallet[1])
+		self._txn["payload"] = hexlify(payload_signed)
 		self._signed = True
 
 	def json(self):
@@ -140,6 +142,24 @@ class MoTxn(Txn):
 			raise SyntaxError("Requires Signing")
 
 	def valid(self):
-		return True
+		return self._blockchain.calculateBalance(self._frm) >= self._amount
 
 	raw = property(lambda self: self._txn)
+
+class MoGenTxn(Txn):
+
+	def __init__(self, to):
+		self._to = to
+		self._amount = 10
+
+		self._txn = {
+			"to": self._to,
+			"type": "mgo",
+			"amount": self._amount
+		}
+
+	def json(self):
+		return dumps(self._txn)
+
+	def valid(self):
+		return True

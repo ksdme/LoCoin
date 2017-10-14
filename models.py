@@ -6,10 +6,12 @@
 """
 import rsa
 from utils import *
+from wallet import *
 from hashlib import sha1
 from app_exceptions import *
 from json import dumps, loads
 from time import time as timeStamp
+from binascii import unhexlify
 
 class Block(object):
 
@@ -85,6 +87,7 @@ class BlockChain(object):
 			assert isinstance(block, Block)
 
 		self._blocks = map(lambda l: l.json(), blocks)
+		self._contains_gen = False
 
 	"""
 		#####################################
@@ -106,6 +109,16 @@ class BlockChain(object):
 		# to the last difficulty level
 		tip_block = self.tip()
 		flag = flag and tip_block.raw["difficulty"] <= block.raw["difficulty"]
+
+		for txn in block.raw["txns"]:
+			txn = loads(txn)
+
+			# ensure it contains only one gen txn
+			if txn["type"] == "mgo" and not self._contains_gen:
+				self._contains_gen = True
+			elif txn["type"] == "mgo" and self._contains_gen:
+				flag = False
+				break
 
 		if flag:
 			self._blocks.append(block.json())
@@ -149,16 +162,20 @@ class BlockChain(object):
 		balance = 0.0
 		for block in self.getBlocks(False):
 			for txn in block.raw["txns"]:
-				txn = loads(txn)
 
-				if txn["type"] != "mo":
+				if txn["type"] not in ["mo", "mgo"]:
+					continue
+
+				if txn["type"] == "mgo":
+					if txn["to"] == of:
+						balance += txn["amount"]
 					continue
 
 				if txn["from"] != of:
 					frm = txn["from"]
 					pubKey = Wallet.reconstructPublicKey(frm)
 
-					decrypted = rsa.decrypt(txn["payload"], pubKey)
+					decrypted = rsa.decrypt(unhexlify(txn["payload"]), pubKey)
 					decrypted = loads(decrypted)
 
 					# Ensure the key matches!
@@ -166,16 +183,38 @@ class BlockChain(object):
 						balance += float(decrypted["amount"])
 				else:
 					pubKey = Wallet.reconstructPublicKey(of)
-					decrypted = rsa.decrypt(txn["payload"], pubKey)
+					decrypted = rsa.decrypt(unhexlify(txn["payload"]), pubKey)
 					decrypted = loads(decrypted)
 
 					balance -= float(decrypted["amount"])
 
 		return balance
 
-	def getPosition(self, of):
+	def getLoHistory(self, identity_private_key):
+		for block in self.getBlocks(False):
+			for txn in block.raw["txns"]:
+				txn = loads(txn)
 
-		pass
+				if txn["type"] != "lo":
+					continue
+
+				identity = rsa.decrypt(unhexlify(txn["identity"]), identity_private_key)
+
+				try:
+					identity = loads(identity)
+					if identity["ok"] == 200:
+						yield txn["loc"], txn["at"]
+				except: continue
+
+	def getAllLoc(self):
+		for block in self.getBlocks(False):
+			for txn in block.raw["txns"]:
+				# txn = loads(txns)
+
+				if txn["type"] != "lo":
+					continue
+
+				yield txn["loc"], txn["at"]
 
 if __name__ == "__main__":
 	from txns import *
@@ -197,9 +236,21 @@ if __name__ == "__main__":
 
 	txnPool.addToPool(loTxn)
 
+	moTxn = MoGenTxn("tJiPiyR7ggjQaT0O0hgYijgxLYaatam7AZhjFgMg9hgj4iymJuvaMSiahaagzQahgHaN5nCaUiUoHKihlThLaiaTWvjpgj5QiPha5hgjIgPgELHjzigZAj1aOSuHGjphUxT3mJa2UhgjhlhazlgCKgXgjaaimM3hxghuixEaiJ2KhrIahjhEhhh07SnaaaHiyhHh20jjjgjgiUhh3w2ajhjjiIgIuota4Wxivauh0LkIHj6XSMoaz9EimaumzNmaiiaahgVvCoiXjPiX7igStiPaigg3OjKn9Hjihh5ghO9gH8KgigF4jgTzqZHgPgjRghihPqjZlhaJihjYkGMqFgDWnItjagJxVahJghkGhj9h7BiTiiinFhgiLnYig2kRg1hmOsihZaijgOwOhjMh")
+	txnPool.addToPool(moTxn)
+
+	Miner.do(blockChain, txnPool)
+	blockChain.getBlocks(True)
+
+	for l in blockChain.getAllLoc():
+		print l
+
 	moTxn = MoTxn(blockChain, wallet, "kW3giRjTgjihYqLqajKxBFajaBRagNngi4iQKpiOrg0G3jvAyCihhVj5KE9aahhVJOMAlZiUxaaRB1HyjaBgV1EvJtsDhsjvjiaiojaAwgSjoPtjN2l7a3yYaiqg45iDphQjaoC6NMiqahjhxiBjaihmQ2yQpThGghnhnhagAhOkjMjPDaX8OaaCaiiQhMUhlJgj", 5)
 	moTxn.sign()
 	txnPool.addToPool(moTxn)
 
 	Miner.do(blockChain, txnPool)
+
 	blockChain.getBlocks(True)
+
+	print blockChain.calculateBalance("kW3giRjTgjihYqLqajKxBFajaBRagNngi4iQKpiOrg0G3jvAyCihhVj5KE9aahhVJOMAlZiUxaaRB1HyjaBgV1EvJtsDhsjvjiaiojaAwgSjoPtjN2l7a3yYaiqg45iDphQjaoC6NMiqahjhxiBjaihmQ2yQpThGghnhnhagAhOkjMjPDaX8OaaCaiiQhMUhlJgj")

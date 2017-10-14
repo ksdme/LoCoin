@@ -33,7 +33,7 @@ class Wallet(object):
 
 	@staticmethod
 	def reconstructPublicKey(key):
-		return PublicKey(transform_alpha_to_pub_key(key), 65537)
+		return PublicKey(int(transform_alpha_to_pub_key(key)), 65537)
 
 	@staticmethod
 	def loadWallet(uri):
