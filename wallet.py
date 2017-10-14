@@ -5,82 +5,67 @@
 """
 
 # the siginging mechanism
-from rsa import *
 from utils import *
+from conf import *
+from toyutils import *
 from binascii import unhexlify
 
-# required constant, helps during translation
-# of the public key from a number to string
-_MAP_GEN_TUPLE = ([(str(l), chr(l+97)) for l in xrange(0, 26)] +
-                  [(str(l), chr(l+39)) for l in xrange(26, 52)] +
-                  [(str(l), chr(l-4))  for l in xrange(52, 62)])
-
-# useful when translating from pub key to alpha
-_KEY_TRANSLATE_MAP_FORWARD = dict(_MAP_GEN_TUPLE)
-
-# used when translating from alpha to pub key
-_KEY_TRANSLATE_MAP_BACKWARD = dict(map(
-    lambda elm: (elm[1], elm[0]), _MAP_GEN_TUPLE))
-
-def transform_pub_key_to_alpha(key):
-    """
-        transforms a given pub key into
-        an alphanumeric key used for txn
-    """
-    key, transformed = str(key), ""
-    current, key_len = 0, len(key)
-
-    while current < key_len:
-        partial = key[current]
-        try:
-            transformed += _KEY_TRANSLATE_MAP_FORWARD[partial+key[current+1]]
-            current += 2
-        except (KeyError, IndexError):
-            transformed += _KEY_TRANSLATE_MAP_FORWARD[partial]
-            current += 1
-
-    return transformed
-
-def transform_alpha_to_pub_key(key):
-    """
-        transforms a given alpha numeric
-        key into its pub key form
-    """
-    transformed, key = "", str(key)
-    for elm in key:
-        transformed += _KEY_TRANSLATE_MAP_BACKWARD[elm]
-
-    return transformed
+from StringIO import StringIO
+from os.path import isdir, join
+from zipfile import ZipFile, ZIP_STORED
+from rsa import newkeys, PublicKey, PrivateKey
 
 class Wallet(object):
 
 	@staticmethod
 	def new():
-		keys = newkeys(4096, poolsize=2)
+		return newkeys(WalletConf.KEY_PAIR_SIZE, poolsize=2)
 
 	@staticmethod
-    def getPublicKey(wallet):
-        """
-            takes a wallet and generates your
-            public alphanumeric key
-        """
+	def getPublicKey(wallet):
+		"""
+			takes a wallet and generates your
+			public alphanumeric key
+		"""
 
-        pub_key = str(wallet[0].n)
-        return transform_pub_key_to_alpha(pub_key)
-
-	@staticmethod
-	def loadPublic(publicKey):
-		publicKey = unhexlify(publicKey)
-		return SigningKey.from_string(publicKey, curve=SECP256k1)
+		pub_key = str(wallet[0].n)
+		return transform_pub_key_to_alpha(pub_key)
 
 	@staticmethod
-	def loadPrivate(privateKey):
-		privateKey = unhexlify(privateKey, curve=SECP256k1)
-		return VerifyingKey.from_string(privateKey, curve=SECP256k1)
+	def loadWallet(uri):
+		"""
+			loads a wallet from a public key file
+			and a private key file
+		"""
+		assert not isdir(uri)
+
+		with ZipFile(uri, "r") as walletfile:
+			pub_key = (PublicKey.load_pkcs1(walletfile.read(
+				WalletConf.PUBLIC_KEY_FILE_NAME)))
+
+			priv_key = PrivateKey.load_pkcs1(walletfile.read(
+				WalletConf.PRIVATE_KEY_FILE_NAME))
+
+		return pub_key, priv_key
 
 	@staticmethod
-	def load(publicKey, privateKey):
-		return Wallet.loadPublic(publicKey), Wallet.loadPrivate(privateKey)
+	def saveWallet(key_pair, save_to):
+		"""
+			saves a given wallet key pair to
+			a given directory, in pem format
+		"""
+		if isdir(save_to):
+			save_to = join(save_to, "toycoin")
+
+		pub_key, priv_key = key_pair
+		save_to = save_to+WalletConf.WALLET_FILE_EXTENSION
+		with ZipFile(save_to, "w", ZIP_STORED) as walletfile:
+
+			binary_data = StringIO(pub_key.save_pkcs1(format="PEM")).getvalue()
+			walletfile.writestr(WalletConf.PUBLIC_KEY_FILE_NAME, binary_data)
+
+			binary_data = StringIO(priv_key.save_pkcs1(format="PEM")).getvalue()
+			walletfile.writestr(WalletConf.PRIVATE_KEY_FILE_NAME, binary_data)
 
 class Identity(Wallet):
 	"""
@@ -89,3 +74,10 @@ class Identity(Wallet):
 		different classes for different roles
 	"""
 	pass
+
+if __name__ == "__main__":
+	newWallet = Wallet.new()
+	Wallet.saveWallet(newWallet, "sample")
+	loaded = Wallet.loadWallet("sample.wallet")
+	print Wallet.getPublicKey(loaded)
+	print loaded

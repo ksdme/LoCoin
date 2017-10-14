@@ -147,13 +147,22 @@ class BlockChain(object):
 if __name__ == "__main__":
 	from txns import *
 	from miner import *
-	
+	from wallet import *
+
+	wallet = Identity.loadWallet("sample.wallet")
+
 	genesis = Block("da4b9237bacccdf19c0760cab7aec4a8359010b0", 1, [])
 	blockChain, txnPool = BlockChain([genesis]), TxnPool() 
 
-	loTxn = LoTxn("28.535517,77.391029", 1, "0f15eacb36d9d1a7786eb59d090816cef38a181b7d19baf4c49383d2f46b1b13")
+	loTxn = LoTxn("28.535517,77.391029", 1, wallet)
 	Miner.fixLoTxn(loTxn)
 
 	txnPool.addToPool(loTxn)
+
+	loTxn = LoTxn("28.535517,77.391030", 1, wallet)
+	Miner.fixLoTxn(loTxn)
+
+	txnPool.addToPool(loTxn)
+
 	Miner.do(blockChain, txnPool)
 	blockChain.getBlocks(True)

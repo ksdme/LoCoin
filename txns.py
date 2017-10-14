@@ -2,12 +2,14 @@
 	@author ksdme
 	the various types of coins
 """
+import rsa
 from utils import *
 from wallet import *
 from hashlib import sha1
 from app_exceptions import *
 from json import dumps, loads
 from time import time as tyme
+from binascii import hexlify
 
 # Simply to keep txns
 class Txn(object): pass
@@ -47,26 +49,26 @@ class LoTxn(Txn):
 			txn.pub,
 			txn.raw["at"])
 
-	def __init__(self, lat_long, difficulty, pubKey, time=None):
+	def __init__(self, lat_long, difficulty, identity, time=None):
 		assert isinstance(difficulty, int)
+		assert not isinstance(identity, str)
 
 		self._lat_long = lat_long
-		self._pubKey = pubKey
 		self._time = int(tyme()*1000)
 		self._difficulty = int(difficulty)
+		self._pubKey = Identity.getPublicKey(identity)
 
 		if time is not None:
 			self._time = int(time)
 
 		self._lo_txn_partial = {
-			"pub": pubKey,
+			"pub": sha1(self._pubKey).hexdigest(),
 			"ok": 200
 		}
 
 		lo_txn_signed = dumps(self._lo_txn_partial)
-		lo_txn_signer = Identity.loadPublic(pubKey)
-		lo_txn_signed = lo_txn_signer.sign(lo_txn_signed)
-		lo_txn_signed = toReadable(lo_txn_signed)
+		lo_txn_signed = rsa.encrypt(lo_txn_signed, identity[0])
+		lo_txn_signed = hexlify(lo_txn_signed)
 
 		self._lo_txn = {
 			"type": "lo",
