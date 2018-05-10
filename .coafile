@@ -1,0 +1,15 @@
+[all]
+files = *.py
+use_spaces = True
+language = python
+
+[all.general]
+bears = QuotesBear
+preferred_quotation = "
+
+[all.python]
+bears = SpaceConsistencyBear
+
+[all.commit]
+bears = GitCommitBear
+shortlog_trailing_period = False
