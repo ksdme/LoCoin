@@ -1,6 +1,6 @@
 """
-	@author ksdme
-	the locoin server executer
+    @author ksdme
+    the locoin server executer
 """
 from txns import *
 from wallet import *
@@ -15,28 +15,28 @@ CORS(app)
 # new endpoints
 @app.route("/new/identity/<int:name>")
 def newIdentity(name):
-	identity = Identity.new()
-	Identity.saveWallet(identity, str(name))
+    identity = Identity.new()
+    Identity.saveWallet(identity, str(name))
 
-	return jsonify({
-		"pk": Identity.getPublicKey(identity) })
+    return jsonify({
+        "pk": Identity.getPublicKey(identity) })
 
 # wallet identity
 @app.route("/new/wallet/<int:name>")
 def newWallet(name):
-	wallet = Wallet.new()
-	Wallet.saveWallet(wallet, str(name))
+    wallet = Wallet.new()
+    Wallet.saveWallet(wallet, str(name))
 
-	return jsonify({
-		"pk": Wallet.getPublicKey(wallet) })
+    return jsonify({
+        "pk": Wallet.getPublicKey(wallet) })
 
 # simply add lotxn
 @app.route("/txn/identity/<pubkey>/<location>/<int:difficulty>")
 def makeLocationUpdate(pubkey, location, difficulty):
-	location = str(location) + "="*(len(location)%4)
-	location = b64decode(location)
+    location = str(location) + "="*(len(location)%4)
+    location = b64decode(location)
 
-	return jsonify(LoTxn(location, difficulty, pubkey).raw)
+    return jsonify(LoTxn(location, difficulty, pubkey).raw)
 
 if __name__ == "__main__":
-	app.run()
+    app.run()

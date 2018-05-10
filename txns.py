@@ -1,6 +1,6 @@
 """
-	@author ksdme
-	the various types of coins
+    @author ksdme
+    the various types of coins
 """
 import rsa
 from utils import *
@@ -15,151 +15,151 @@ from binascii import hexlify, unhexlify
 class Txn(object): pass
 
 class TxnPool(object):
-	""" maintainsa a transaction pool """
+    """ maintainsa a transaction pool """
 
-	def __init__(self, empty=[]):
-		assert isinstance(empty, list)
-		self._pool = empty
+    def __init__(self, empty=[]):
+        assert isinstance(empty, list)
+        self._pool = empty
 
-	""" FIFO """
-	def select(self):
-		for _ in xrange(10):
-			try:
-				yield self.pool.pop()
-			except IndexError:
-				break
-	
-	def addToPool(self, txn):
-		assert isinstance(txn, Txn)
+    """ FIFO """
+    def select(self):
+        for _ in xrange(10):
+            try:
+                yield self.pool.pop()
+            except IndexError:
+                break
 
-		if txn.valid():
-			self._pool.append(txn)
-		else:
-			raise BlockRejecetedToPool()
+    def addToPool(self, txn):
+        assert isinstance(txn, Txn)
 
-	pool = property(lambda self: self._pool)
+        if txn.valid():
+            self._pool.append(txn)
+        else:
+            raise BlockRejecetedToPool()
+
+    pool = property(lambda self: self._pool)
 
 class LoTxn(Txn):
 
-	@staticmethod
-	def load(txn):
-		return LoTxn(
-			txn.raw["loc"],
-			txn.raw["difficulty"],
-			txn.pub,
-			txn.raw["at"])
+    @staticmethod
+    def load(txn):
+        return LoTxn(
+            txn.raw["loc"],
+            txn.raw["difficulty"],
+            txn.pub,
+            txn.raw["at"])
 
-	def __init__(self, lat_long, difficulty, identity, time=None):
-		assert isinstance(difficulty, int)
-		assert not isinstance(identity, str)
+    def __init__(self, lat_long, difficulty, identity, time=None):
+        assert isinstance(difficulty, int)
+        assert not isinstance(identity, str)
 
-		self._lat_long = lat_long
-		self._time = int(tyme()*1000)
-		self._difficulty = int(difficulty)
-		self._pubKey = Identity.getPublicKey(identity)
+        self._lat_long = lat_long
+        self._time = int(tyme()*1000)
+        self._difficulty = int(difficulty)
+        self._pubKey = Identity.getPublicKey(identity)
 
-		if time is not None:
-			self._time = int(time)
+        if time is not None:
+            self._time = int(time)
 
-		self._lo_txn_partial = {
-			"pub": sha1(self._pubKey).hexdigest(),
-			"ok": 200
-		}
+        self._lo_txn_partial = {
+            "pub": sha1(self._pubKey).hexdigest(),
+            "ok": 200
+        }
 
-		lo_txn_signed = dumps(self._lo_txn_partial)
-		lo_txn_signed = rsa.encrypt(lo_txn_signed, identity[0])
-		lo_txn_signed = hexlify(lo_txn_signed)
+        lo_txn_signed = dumps(self._lo_txn_partial)
+        lo_txn_signed = rsa.encrypt(lo_txn_signed, identity[0])
+        lo_txn_signed = hexlify(lo_txn_signed)
 
-		self._lo_txn = {
-			"type": "lo",
-			"at": self._time,
-			"loc": self._lat_long,
-			"identity": lo_txn_signed,
-			"difficulty": self._difficulty
-		}
+        self._lo_txn = {
+            "type": "lo",
+            "at": self._time,
+            "loc": self._lat_long,
+            "identity": lo_txn_signed,
+            "difficulty": self._difficulty
+        }
 
-		lo_txn_hash = dumps(self._lo_txn)
-		lo_txn_hash = sha1(lo_txn_hash).hexdigest()
+        lo_txn_hash = dumps(self._lo_txn)
+        lo_txn_hash = sha1(lo_txn_hash).hexdigest()
 
-		self._lo_txn["hash"] = lo_txn_hash
-		self._lo_txn["nonce"] = ""
+        self._lo_txn["hash"] = lo_txn_hash
+        self._lo_txn["nonce"] = ""
 
-	def json(self):
-		return dumps(self._lo_txn)
+    def json(self):
+        return dumps(self._lo_txn)
 
-	def nonceTest(self, nonce):
-		self.raw["nonce"] = str(nonce)
+    def nonceTest(self, nonce):
+        self.raw["nonce"] = str(nonce)
 
-		loTxnStr = self.json()
-		loTxnStr = sha1(loTxnStr).hexdigest()
-		return str(loTxnStr[:self.raw["difficulty"]]).count("0") == int(self.raw["difficulty"])
+        loTxnStr = self.json()
+        loTxnStr = sha1(loTxnStr).hexdigest()
+        return str(loTxnStr[:self.raw["difficulty"]]).count("0") == int(self.raw["difficulty"])
 
-	def setNonce(self, nonce):
-		self.raw["nonce"] = str(nonce)
+    def setNonce(self, nonce):
+        self.raw["nonce"] = str(nonce)
 
-	def valid(self):
-		return self.nonceTest(self.raw["nonce"])
+    def valid(self):
+        return self.nonceTest(self.raw["nonce"])
 
-	raw = property(lambda self: self._lo_txn)
-	pub = property(lambda self: self._pubKey)
+    raw = property(lambda self: self._lo_txn)
+    pub = property(lambda self: self._pubKey)
 
 class MoTxn(Txn):
 
-	def __init__(self, blockChain, wallet, to, amount):
-		"""
-			for reasons, calculate the balances
-			beforehand and then validate the amount
-		"""
-		assert amount > 0
+    def __init__(self, blockChain, wallet, to, amount):
+        """
+            for reasons, calculate the balances
+            beforehand and then validate the amount
+        """
+        assert amount > 0
 
-		self._amount = float(amount)
-		self._frm = Wallet.getPublicKey(wallet)
-		self._wallet = wallet
-		self._to = to
-		self._blockchain = blockChain
+        self._amount = float(amount)
+        self._frm = Wallet.getPublicKey(wallet)
+        self._wallet = wallet
+        self._to = to
+        self._blockchain = blockChain
 
-		self._signed = False
+        self._signed = False
 
-		self._txn = {
-			"type": "mo",
-			"from": self._frm
-		}
+        self._txn = {
+            "type": "mo",
+            "from": self._frm
+        }
 
-	def sign(self):
-		payload = {
-			"to": self._to,
-			"amount": self._amount
-		}
+    def sign(self):
+        payload = {
+            "to": self._to,
+            "amount": self._amount
+        }
 
-		payload_signed = rsa.encrypt(dumps(payload).encode('utf-8'), self._wallet[1])
-		self._txn["payload"] = hexlify(payload_signed)
-		self._signed = True
+        payload_signed = rsa.encrypt(dumps(payload).encode("utf-8"), self._wallet[1])
+        self._txn["payload"] = hexlify(payload_signed)
+        self._signed = True
 
-	def json(self):
-		if self._signed:
-			return dumps(self._txn)
-		else:
-			raise SyntaxError("Requires Signing")
+    def json(self):
+        if self._signed:
+            return dumps(self._txn)
+        else:
+            raise SyntaxError("Requires Signing")
 
-	def valid(self):
-		return self._blockchain.calculateBalance(self._frm) >= self._amount
+    def valid(self):
+        return self._blockchain.calculateBalance(self._frm) >= self._amount
 
-	raw = property(lambda self: self._txn)
+    raw = property(lambda self: self._txn)
 
 class MoGenTxn(Txn):
 
-	def __init__(self, to):
-		self._to = to
-		self._amount = 10
+    def __init__(self, to):
+        self._to = to
+        self._amount = 10
 
-		self._txn = {
-			"to": self._to,
-			"type": "mgo",
-			"amount": self._amount
-		}
+        self._txn = {
+            "to": self._to,
+            "type": "mgo",
+            "amount": self._amount
+        }
 
-	def json(self):
-		return dumps(self._txn)
+    def json(self):
+        return dumps(self._txn)
 
-	def valid(self):
-		return True
+    def valid(self):
+        return True
